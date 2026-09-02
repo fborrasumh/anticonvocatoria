@@ -70,6 +70,7 @@ input[type=text],input[type=number],input[type=password],textarea,select{
 textarea{resize:vertical;font-family:var(--mono);font-size:13px;line-height:1.5}
 input:focus,textarea:focus,select:focus{outline:2px solid var(--teal);outline-offset:1px;border-color:transparent}
 .hint{font-size:12.5px;color:var(--dim);margin-top:6px}
+.mono{font-family:var(--mono);font-size:.92em;color:var(--ink-2)}
 .tipos{display:flex;flex-wrap:wrap;gap:8px}
 .tipo{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--rule);border-radius:999px;padding:6px 13px;cursor:pointer;font-size:13.5px;user-select:none;background:var(--card)}
 .tipo input{accent-color:var(--teal);margin:0}
@@ -98,6 +99,24 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:2px solid var
 .conv-meta{font-family:var(--mono);font-size:11.5px;color:var(--dim);flex:1}
 .conv-body{padding:0 14px 14px}
 .empty{border:1px dashed var(--rule);border-radius:var(--r);padding:26px;text-align:center;color:var(--dim);font-size:14px;background:var(--card)}
+.conv-src{font-family:var(--mono);font-size:10.5px;color:var(--dim);border:1px solid var(--rule-2);border-radius:999px;padding:2px 8px;max-width:26ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* zona de subida de ficheros */
+.drop{border:1.5px dashed var(--rule);border-radius:var(--r);background:var(--card);padding:26px 20px;text-align:center;cursor:pointer;transition:border-color .15s ease,background .15s ease}
+.drop:hover{border-color:var(--teal)}
+.drop.over{border-color:var(--teal);background:var(--teal-soft)}
+.drop.busy{opacity:.7;pointer-events:none}
+.drop-ico{font-family:var(--mono);font-size:20px;color:var(--teal);line-height:1}
+.drop-t{margin:9px 0 5px;color:var(--ink);font-size:15px}
+.drop-t .linklike{color:var(--teal);text-decoration:underline;text-underline-offset:2px}
+.drop-s{margin:0 auto;font-size:12.5px;color:var(--dim);max-width:76ch}
+.ing-log{display:grid;gap:4px;margin-top:12px}
+.ing-row{display:flex;gap:12px;align-items:baseline;font-family:var(--mono);font-size:11.5px;border:1px solid var(--rule-2);border-radius:var(--r);background:var(--card);padding:6px 11px}
+.ing-n{color:var(--ink-2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ing-s{color:var(--dim);text-align:right}
+.ing-s.ok{color:var(--teal)}
+.ing-s.warn{color:var(--amber)}
+.ing-s.err{color:var(--sello)}
 
 /* barra ejecución */
 .run{position:sticky;bottom:0;z-index:30;background:rgba(231,234,239,.95);backdrop-filter:blur(10px);border-top:1px solid var(--rule);padding:12px 0}
@@ -296,12 +315,19 @@ table.tbl td.n{font-family:var(--mono);text-align:right}
   <!-- HISTÓRICO -->
   <section class="sec">
     <div class="sec-head"><span class="sec-num">MÓDULO 1</span><h2>Auditoría de tu previsibilidad</h2></div>
-    <p class="sec-sub">Pega tus últimos exámenes. Se ejecuta contra ellos el mismo análisis que usaría un estudiante: matriz tema × convocatoria, probabilidad calibrada y, con 3 o más convocatorias, validación ciega con Brier score. El resultado es el diagnóstico, no el castigo.</p>
+    <p class="sec-sub">Sube los ficheros de tus últimos exámenes —PDF o Word, todos de golpe— y cada uno se da de alta como una convocatoria. Se ejecuta contra ellos el mismo análisis que usaría un estudiante: matriz tema × convocatoria, probabilidad calibrada y, con 3 o más convocatorias, validación ciega con Brier score. El resultado es el diagnóstico, no el castigo.</p>
 
-    <div class="row">
-      <div class="field" style="max-width:150px"><label for="newYear">Año / etiqueta</label><input type="text" id="newYear" placeholder="2025_junio"></div>
-      <button class="btn-ghost" id="btnAdd" style="margin-top:20px">Añadir convocatoria</button>
-      <label class="btn-ghost" style="margin-top:20px;display:inline-block">Importar .txt<input type="file" id="fileIn" accept=".txt,.md" multiple class="hidden"></label>
+    <div class="drop" id="drop">
+      <input type="file" id="fileIn" accept=".pdf,.docx,.doc,.rtf,.txt,.md,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple class="hidden">
+      <div class="drop-ico">[ ↥ ]</div>
+      <p class="drop-t">Arrastra aquí tus exámenes o <span class="linklike">búscalos en tu ordenador</span></p>
+      <p class="drop-s">PDF · Word (.docx, .doc) · RTF · texto plano. Varios a la vez: cada fichero se convierte en una convocatoria y la etiqueta se deduce del nombre (<span class="mono">Bioestadistica_2024_junio.pdf</span> → <span class="mono">2024_junio</span>). El texto queda editable por si la extracción no sale limpia. Nada sale de tu navegador.</p>
+    </div>
+    <div class="ing-log hidden" id="ingLog"></div>
+
+    <div class="row" style="margin-top:16px">
+      <div class="field" style="max-width:170px"><label for="newYear">Año / etiqueta</label><input type="text" id="newYear" placeholder="2025_junio"></div>
+      <button class="btn-ghost" id="btnAdd" style="margin-top:20px">Añadir en blanco y pegar</button>
       <button class="btn" id="btnAudit" style="margin-top:20px">Auditar mi previsibilidad</button>
     </div>
     <div class="conv-list" id="convList"></div>
@@ -1072,20 +1098,32 @@ JSON exacto: {"parrafos":["...","..."],"resumen_regla":["frase corta 1","frase c
 function renderConv(){
   const l = $('#convList');
   if(!state.convocatorias.length){
-    l.innerHTML = `<div class="empty">Sin convocatorias todavía. Sin histórico puedes usar la app igual, pero no habrá diagnóstico ni bucle adversario: no hay predictor contra el que medirse.</div>`;
+    l.innerHTML = `<div class="empty">Sin convocatorias todavía. Arrastra ahí arriba los PDF o los Word de tus últimos exámenes. Sin histórico puedes usar la app igual, pero no habrá diagnóstico ni bucle adversario: no hay predictor contra el que medirse.</div>`;
     return;
   }
   l.innerHTML = state.convocatorias.map(c => `
     <details class="conv" ${c.texto ? '' : 'open'}>
       <summary><span class="conv-year">${esc(c.anio)}</span>
         <span class="conv-meta">${c.texto.trim() ? c.texto.trim().length.toLocaleString('es') + ' caracteres' : 'vacía — pega aquí el examen'}</span>
+        ${c.fuente ? `<span class="conv-src" title="${esc(c.fuente)}">${esc(c.fuente)}</span>` : ''}
         <button class="btn-mini" data-del="${c.id}">Eliminar</button></summary>
-      <div class="conv-body"><textarea rows="9" data-txt="${c.id}" placeholder="Pega aquí el texto limpio del examen...">${esc(c.texto)}</textarea></div>
+      <div class="conv-body">
+        ${c.aviso ? `<div class="amberbox" style="margin-bottom:10px">${esc(c.aviso)}</div>` : ''}
+        <div class="field" style="max-width:200px;margin-bottom:10px">
+          <label>Año / etiqueta</label><input type="text" data-yr="${c.id}" value="${esc(c.anio)}"></div>
+        <textarea rows="9" data-txt="${c.id}" placeholder="Pega aquí el texto limpio del examen...">${esc(c.texto)}</textarea>
+      </div>
     </details>`).join('');
   $$('[data-txt]').forEach(t => t.oninput = () => {
     const c = state.convocatorias.find(x => x.id === t.dataset.txt);
     if(c){ c.texto = t.value;
       t.closest('.conv').querySelector('.conv-meta').textContent = t.value.trim() ? t.value.trim().length.toLocaleString('es') + ' caracteres' : 'vacía — pega aquí el examen'; }
+    guardarAuto();
+  });
+  $$('[data-yr]').forEach(i => i.oninput = () => {
+    const c = state.convocatorias.find(x => x.id === i.dataset.yr);
+    if(c){ c.anio = i.value.trim();
+      i.closest('.conv').querySelector('.conv-year').textContent = c.anio; }
     guardarAuto();
   });
   $$('[data-del]').forEach(b => b.onclick = e => { e.preventDefault(); e.stopPropagation();
@@ -1096,14 +1134,176 @@ $('#btnAdd').onclick = () => {
   state.convocatorias.push({id:uid(), anio:y, texto:''}); $('#newYear').value = ''; renderConv();
   $('#convList').lastElementChild?.querySelector('textarea')?.focus();
 };
-$('#fileIn').onchange = async e => {
-  for(const f of e.target.files){
-    const txt = await f.text();
-    const y = (f.name.match(/(19|20)\d{2}[\w-]*/) || [f.name.replace(/\.[^.]+$/,'')])[0];
-    state.convocatorias.push({id:uid(), anio:y, texto:txt});
+
+/* =========================================================
+   ingesta de ficheros: PDF, Word (.docx/.doc), RTF, texto
+   ========================================================= */
+const PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174';
+const MAMMOTH = 'https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js';
+const MAX_MB = 30;
+
+function cargarScript(src){
+  return new Promise((res, rej) => {
+    if(document.querySelector(`script[src="${src}"]`)) return res();
+    const s = document.createElement('script');
+    s.src = src; s.onload = res;
+    s.onerror = () => rej(new Error('no se pudo cargar el lector; ¿hay conexión?'));
+    document.head.appendChild(s);
+  });
+}
+
+/* PDF: reconstruye líneas agrupando los fragmentos por posición vertical */
+async function leerPDF(file){
+  await cargarScript(`${PDFJS}/pdf.min.js`);
+  pdfjsLib.GlobalWorkerOptions.workerSrc = `${PDFJS}/pdf.worker.min.js`;
+  const pdf = await pdfjsLib.getDocument({data: await file.arrayBuffer()}).promise;
+  const pags = [];
+  for(let p = 1; p <= pdf.numPages; p++){
+    const tc = await (await pdf.getPage(p)).getTextContent();
+    const lin = new Map();
+    tc.items.forEach(it => {
+      const y = Math.round(it.transform[5]);
+      if(!lin.has(y)) lin.set(y, []);
+      lin.get(y).push(it);
+    });
+    pags.push([...lin.keys()].sort((a,b) => b - a).map(y => lin.get(y)
+      .sort((a,b) => a.transform[4] - b.transform[4])
+      .map(i => i.str).join(' ').replace(/\s+/g,' ').trim()).filter(Boolean).join('\n'));
   }
-  e.target.value = ''; renderConv(); guardarAuto();
-};
+  const txt = unirLineas(pags.join('\n\n'));
+  if(txt.replace(/\s/g,'').length < pdf.numPages * 40)
+    throw new Error('PDF sin capa de texto (escaneado): pásalo antes por un OCR');
+  return txt;
+}
+
+/* une los renglones partidos del PDF y deshace los guiones de fin de línea */
+function unirLineas(t){
+  const out = [];
+  for(const raw of t.split('\n')){
+    const L = raw.trim();
+    if(!L){ out.push(''); continue; }
+    const prev = out.length ? out[out.length - 1] : '';
+    const sigue = prev && prev.length > 45 && !/[.:;!?»”)]$/.test(prev) && /^[a-záéíóúñüï(“"']/.test(L);
+    if(sigue) out[out.length - 1] = prev.endsWith('-') ? prev.slice(0,-1) + L : prev + ' ' + L;
+    else out.push(L);
+  }
+  return out.join('\n').replace(/\n{3,}/g,'\n\n').trim();
+}
+
+/* .docx vía mammoth: conserva encabezados, listas y tablas */
+async function leerDOCX(file){
+  await cargarScript(MAMMOTH);
+  const r = await mammoth.convertToHtml({arrayBuffer: await file.arrayBuffer()});
+  const d = document.createElement('div'); d.innerHTML = r.value;
+  const partes = [];
+  d.querySelectorAll('h1,h2,h3,h4,h5,h6,p,li,table').forEach(n => {
+    const tag = n.tagName.toLowerCase();
+    if(tag !== 'table' && n.closest('table')) return;
+    if(tag === 'table'){
+      const filas = [...n.querySelectorAll('tr')].map(tr => [...tr.children]
+        .map(td => (td.textContent||'').replace(/\s+/g,' ').trim()).join(' | ')).filter(Boolean);
+      if(filas.length) partes.push(filas.join('\n'));
+      return;
+    }
+    const txt = (n.textContent||'').replace(/\s+/g,' ').trim();
+    if(!txt) return;
+    partes.push(/^h[1-6]$/.test(tag) ? '\n' + txt : (tag === 'li' ? '- ' + txt : txt));
+  });
+  return partes.join('\n').replace(/\n{3,}/g,'\n\n').trim();
+}
+
+/* .doc antiguo: extracción aproximada de las tiras de texto del binario */
+async function leerDOC(file){
+  const buf = await file.arrayBuffer();
+  const limpiar = s => s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F\uFFFD]+/g,'\n')
+    .replace(/[^\S\n]{2,}/g,' ').replace(/\n[ \t]*\n+/g,'\n').trim();
+  const punt = s => (s.match(/[a-záéíóúñ]{4,}/gi) || []).length;
+  const cand = ['windows-1252','utf-16le'].map(enc => {
+    try{ return limpiar(new TextDecoder(enc).decode(buf)); }catch{ return ''; }
+  }).sort((a,b) => punt(b) - punt(a))[0];
+  if(punt(cand) < 60)
+    throw new Error('.doc ilegible: ábrelo en Word y guárdalo como .docx o PDF');
+  return cand;
+}
+
+const leerRTF = s => s
+  .replace(/\\'([0-9a-f]{2})/gi, (m,h) => String.fromCharCode(parseInt(h,16)))
+  .replace(/\\par[d]?\b/g,'\n').replace(/\{\\\*[^{}]*\}/g,'')
+  .replace(/\\[a-z]+-?\d* ?/gi,'').replace(/[{}]/g,'')
+  .replace(/\n{3,}/g,'\n\n').trim();
+
+async function extraerTexto(f){
+  if(f.size > MAX_MB * 1024 * 1024) throw new Error(`demasiado grande (máx. ${MAX_MB} MB)`);
+  const ext = (f.name.split('.').pop() || '').toLowerCase();
+  if(ext === 'pdf')  return {texto: await leerPDF(f)};
+  if(ext === 'docx') return {texto: await leerDOCX(f)};
+  if(ext === 'doc')  return {texto: await leerDOC(f),
+    aviso:'Texto extraído de un .doc antiguo: la conversión es aproximada, repásala antes de auditar.'};
+  if(ext === 'rtf')  return {texto: leerRTF(await f.text()),
+    aviso:'Texto extraído de un RTF: la conversión es aproximada, repásala antes de auditar.'};
+  if(['txt','md','csv','html','htm'].includes(ext) || f.type.startsWith('text/'))
+    return {texto: await f.text()};
+  throw new Error('formato no admitido (usa PDF, .docx o texto)');
+}
+
+/* etiqueta deducida del nombre del fichero, sin repetir las ya usadas */
+const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto',
+               'septiembre','setiembre','octubre','noviembre','diciembre'];
+function etiquetaDe(nombre){
+  const base = nombre.replace(/\.[^.]+$/,'').replace(/[_\-.]+/g,' ').toLowerCase();
+  const anio = (base.match(/\b(?:19|20)\d{2}\b/) || [''])[0];
+  const mes  = MESES.find(m => base.includes(m)) || '';
+  const conv = /extraordinari/.test(base) ? 'extraordinaria'
+             : /ordinari/.test(base)      ? 'ordinaria'
+             : /\bsept?\b/.test(base)     ? 'septiembre'
+             : /\bene\b/.test(base)       ? 'enero'
+             : /\bjun\b/.test(base)       ? 'junio'
+             : /\bjul\b/.test(base)       ? 'julio'
+             : /parcial/.test(base)       ? 'parcial'
+             : /\bfinal\b/.test(base)     ? 'final' : '';
+  const raiz = [anio, mes || conv].filter(Boolean).join('_')
+            || nombre.replace(/\.[^.]+$/,'').slice(0,26).trim() || 'convocatoria';
+  let e = raiz, n = 2;
+  while(state.convocatorias.some(c => String(c.anio) === e)) e = `${raiz}_${n++}`;
+  return e;
+}
+
+async function ingestar(files){
+  const lista = [...files];
+  if(!lista.length) return;
+  const log = $('#ingLog'), dz = $('#drop');
+  log.classList.remove('hidden'); dz.classList.add('busy');
+  log.innerHTML = lista.map((f,i) =>
+    `<div class="ing-row"><span class="ing-n">${esc(f.name)}</span><span class="ing-s" id="ing${i}">en cola</span></div>`).join('');
+  let ok = 0;
+  for(let i = 0; i < lista.length; i++){
+    const f = lista[i], est = $(`#ing${i}`);
+    est.textContent = 'leyendo…'; est.className = 'ing-s';
+    try{
+      const {texto, aviso} = await extraerTexto(f);
+      if(!texto || !texto.trim()) throw new Error('el fichero no contiene texto');
+      state.convocatorias.push({id:uid(), anio:etiquetaDe(f.name), texto, fuente:f.name, aviso:aviso||''});
+      est.textContent = `${texto.length.toLocaleString('es')} caracteres` + (aviso ? ' · revisar' : ' · alta');
+      est.className = 'ing-s ' + (aviso ? 'warn' : 'ok');
+      ok++; renderConv();
+    }catch(err){
+      est.textContent = err.message; est.className = 'ing-s err';
+    }
+  }
+  dz.classList.remove('busy');
+  if(ok){ renderConv(); guardarAuto(); }
+}
+
+$('#fileIn').onchange = e => { const fs = [...e.target.files]; e.target.value = ''; ingestar(fs); };
+$('#drop').onclick = e => { if(e.target.id !== 'fileIn') $('#fileIn').click(); };
+['dragenter','dragover'].forEach(ev => $('#drop').addEventListener(ev, e => {
+  e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; $('#drop').classList.add('over'); }));
+$('#drop').addEventListener('dragleave', e => {
+  if(!$('#drop').contains(e.relatedTarget)) $('#drop').classList.remove('over'); });
+$('#drop').addEventListener('drop', e => {
+  e.preventDefault(); $('#drop').classList.remove('over'); ingestar(e.dataTransfer.files); });
+/* que soltar un fichero fuera de la zona no abra el PDF en la pestaña */
+['dragover','drop'].forEach(ev => window.addEventListener(ev, e => e.preventDefault()));
 
 function leerForm(){
   state.asig = $('#asig').value; state.titu = $('#titu').value;
