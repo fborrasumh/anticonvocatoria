@@ -1,6 +1,7 @@
 cff-version: 1.2.0
 message: "Si usas este software, cítalo con estos metadatos."
 title: "AntiConvocatorIA"
+abstract: "Contramedida docente frente a los predictores de exámenes: mide la previsibilidad de los exámenes anteriores, publica una tabla de especificaciones y sortea las preguntas de forma verificable con compromiso criptográfico."
 type: software
 authors:
   - family-names: "Borrás Rocher"
@@ -8,8 +9,15 @@ authors:
     affiliation: "Universidad Miguel Hernández de Elche"
     orcid: "https://orcid.org/0000-0002-5519-4573"
 doi: "10.5281/zenodo.22171162"
-version: "1.0.0"
-date-released: "2026-08-30"
+version: "2.0.0"
+date-released: "2026-09-26"
 url: "https://fborrasumh.github.io/anticonvocatoria/"
 repository-code: "https://github.com/fborrasumh/anticonvocatoria"
 license: MIT
+keywords:
+  - "evaluación"
+  - "tabla de especificaciones"
+  - "previsibilidad"
+  - "sorteo verificable"
+  - "educación superior"
+  - "inteligencia artificial"
